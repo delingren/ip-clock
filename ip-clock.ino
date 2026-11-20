@@ -1,4 +1,5 @@
 #include <WiFiManager.h>
+#include <TM1637Display.h>
 #include <sntp.h>
 #include <time.h>
 
@@ -9,6 +10,14 @@ const int provisionButton = 0;
 const uint32_t provisionPressMs = 3000;
 const char* provisionSSID = "IP-Clock";
 WiFiManager wifiManager;
+
+/**
+* TM1637 display settings
+*/
+TM1637Display display(/* clk = */ 4, /* dio = */ 5);
+
+// Bit 0x40 on the second digit (index 1) controls the center colon on clock modules
+const uint8_t COLON_MASK = 0x40;
 
 /**
  * NTP server and timezone setup
@@ -60,7 +69,7 @@ void setup() {
   timer = timerBegin(/* frequency = */ 1000000);
   timerAttachInterrupt(timer, &onTimer);
   timerAlarm(timer, /* alarm_value = */
-             1000000, /* autoreload = */ true,
+             500000, /* autoreload = */ true,
              /* reload_count = */ 0);
 }
 
@@ -107,5 +116,30 @@ void loop() {
 }
 
 void updateTimeDisplay(tm *timeinfo) {
-  Serial.printf("%02d:%02d:%02d\n", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+  static bool colonOn = false;
+  uint8_t digits[4];
+  int hour = timeinfo->tm_hour;
+  int minute = timeinfo->tm_min;
+
+  digits[0] = display.encodeDigit(hour / 10);
+  digits[1] = display.encodeDigit(hour % 10);
+  digits[2] = display.encodeDigit(minute / 10);
+  digits[3] = display.encodeDigit(minute % 10);
+
+  if (colonOn) {
+    digits[1] |= COLON_MASK;
+  }
+  colonOn = !colonOn;
+
+  Serial.print(int(hour/10));
+  Serial.print(int(hour%10));
+  Serial.print(colonOn ? ":" : " ");
+  Serial.print(int(minute/10));
+  Serial.print(int(minute%10));
+  Serial.print(colonOn ? ":" : " ");
+  Serial.print(int(timeinfo->tm_sec/10));
+  Serial.print(int(timeinfo->tm_sec%10));
+  Serial.println();
+  
+  display.setSegments(digits);
 }
