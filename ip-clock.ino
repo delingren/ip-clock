@@ -1,3 +1,5 @@
+// https://github.com/tzapu/WiFiManager
+// https://github.com/avishorp/TM1637
 #include <WiFiManager.h>
 #include <TM1637Display.h>
 #include <sntp.h>
@@ -6,7 +8,7 @@
 /**
 * Captive portal settings
 */
-const int provisionButton = 0;
+const int provisionButton = 4;
 const uint32_t provisionPressMs = 3000;
 const char* provisionSSID = "IP-Clock";
 WiFiManager wifiManager;
@@ -14,10 +16,7 @@ WiFiManager wifiManager;
 /**
 * TM1637 display settings
 */
-TM1637Display display(/* clk = */ 4, /* dio = */ 5);
-
-// Bit 0x40 on the second digit (index 1) controls the center colon on clock modules
-const uint8_t COLON_MASK = 0x40;
+TM1637Display display(/* clk = */ 2, /* dio = */ 3);
 
 /**
  * NTP server and timezone setup
@@ -38,6 +37,8 @@ void setup() {
   WiFi.mode(WIFI_STA);
 
   Serial.println("Setting up WiFi...");
+  display.setBrightness(0x0f);
+  display.showNumberDec(0, true);
 
   // One minute timeout
   wifiManager.setConfigPortalTimeout(60);
@@ -127,7 +128,7 @@ void updateTimeDisplay(tm *timeinfo) {
   digits[3] = display.encodeDigit(minute % 10);
 
   if (colonOn) {
-    digits[1] |= COLON_MASK;
+    digits[1] |= 0x80;
   }
   colonOn = !colonOn;
 
